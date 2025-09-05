@@ -1,0 +1,127 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider          = "postgresql"
+  url               = env("DATABASE_URL")
+  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
+}
+
+model Org {
+  id         String     @id @default(cuid())
+  name       String
+  users      User[]
+  properties Property[]
+  createdAt  DateTime   @default(now())
+  Invite     Invite[]
+}
+
+model User {
+  id       String   @id @default(cuid())
+  auth0Sub String   @unique
+  email    String
+  name     String?
+  roles    String[]
+  org      Org      @relation(fields: [orgId], references: [id])
+  orgId    String
+
+  // existing:
+  properties Property[] @relation("SellerProperties")
+
+  // NEW: properties where the user is the assigned Agent
+  agentProperties Property[] @relation("AgentProperties")
+
+  createdAt DateTime @default(now())
+  Invite    Invite[]
+}
+
+model Property {
+  id      String @id @default(cuid())
+  org     Org    @relation(fields: [orgId], references: [id])
+  orgId   String
+  title   String
+  address String
+  type    String
+
+  // existing seller link
+  seller   User?   @relation("SellerProperties", fields: [sellerId], references: [id])
+  sellerId String?
+
+  // NEW: assigned agent link
+  agent   User?   @relation("AgentProperties", fields: [agentId], references: [id])
+  agentId String?
+
+  documents Document[]
+  form2     Form2Version[]
+  createdAt DateTime       @default(now())
+  ServePack ServePack[]
+  Invite    Invite[]
+
+  @@index([orgId, agentId])
+  @@index([orgId, sellerId])
+}
+
+model Document {
+  id         String   @id @default(cuid())
+  property   Property @relation(fields: [propertyId], references: [id])
+  propertyId String
+  kind       String
+  filename   String
+  storageKey String
+  sha256     String
+  createdAt  DateTime @default(now())
+}
+
+model Form2Version {
+  id         String   @id @default(cuid())
+  property   Property @relation(fields: [propertyId], references: [id])
+  propertyId String
+  version    Int
+  dataJson   Json
+  pdfKey     String
+  createdAt  DateTime @default(now())
+
+  @@unique([propertyId, version])
+}
+
+model AuditEvent {
+  id       String   @id @default(cuid())
+  actorSub String
+  action   String
+  entity   String
+  entityId String
+  at       DateTime @default(now())
+}
+
+model ServePack {
+  id         String   @id @default(cuid())
+  property   Property @relation(fields: [propertyId], references: [id])
+  propertyId String
+  version    Int
+  zipKey     String
+  manifest   Json
+  createdAt  DateTime @default(now())
+
+  @@unique([propertyId, version])
+}
+
+model Invite {
+  id          String    @id @default(cuid())
+  token       String    @unique
+  email       String
+  role        String // "Seller" (later: "Agent" if you want)
+  orgId       String
+  propertyId  String
+  createdById String
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+  createdAt   DateTime  @default(now())
+
+  org       Org      @relation(fields: [orgId], references: [id])
+  property  Property @relation(fields: [propertyId], references: [id])
+  createdBy User     @relation(fields: [createdById], references: [id])
+}

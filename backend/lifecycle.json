@@ -1,0 +1,1 @@
+{"Rules":[{"ID":"AutoDeleteDevUploads","Status":"Enabled","Filter":{"Prefix":""},"Expiration":{"Days":7}}]}
